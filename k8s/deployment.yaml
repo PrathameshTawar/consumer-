@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: toolrouter-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: toolrouter
+  template:
+    metadata:
+      labels:
+        app: toolrouter
+    spec:
+      containers:
+      - name: api
+        image: yourrepo/toolrouter:latest
+        envFrom:
+        - secretRef:
+            name: toolrouter-secrets
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: toolrouter
+spec:
+  selector:
+    app: toolrouter
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+  type: ClusterIP

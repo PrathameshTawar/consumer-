@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToolRouter Telemetry Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8">ToolRouter Telemetry Dashboard</h1>
+
+        <!-- Metrics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-2">Active Users</h3>
+                <p id="activeUsers" class="text-3xl font-bold text-blue-600">--</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-2">Requests/min</h3>
+                <p id="requestsPerMinute" class="text-3xl font-bold text-green-600">--</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-2">Avg Latency</h3>
+                <p id="avgLatency" class="text-3xl font-bold text-yellow-600">--ms</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-2">Success Rate</h3>
+                <p id="successRate" class="text-3xl font-bold text-purple-600">--%</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-4">Latency Over Time</h3>
+                <canvas id="latencyChart"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold mb-4">Requests Over Time</h3>
+                <canvas id="requestsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Jobs Table -->
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-semibold mb-4">Recent Summarization Jobs</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full table-auto">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-4 py-2 text-left">Job ID</th>
+                            <th class="px-4 py-2 text-left">Status</th>
+                            <th class="px-4 py-2 text-left">Duration</th>
+                            <th class="px-4 py-2 text-left">Created</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobsTable">
+                        <!-- Jobs will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection for real-time updates
+        const ws = new WebSocket('ws://localhost:8000/ws/telemetry'); // Adjust URL as needed
+
+        ws.onopen = () => {
+            console.log('Connected to telemetry WebSocket');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'telemetry') {
+                updateMetrics(data.data);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        // Update metrics display
+        function updateMetrics(data) {
+            document.getElementById('activeUsers').textContent = data.activeUsers.toLocaleString();
+            document.getElementById('requestsPerMinute').textContent = data.requestsPerMinute;
+            document.getElementById('avgLatency').textContent = `${data.avgLatency}ms`;
+            document.getElementById('successRate').textContent = `${data.successRate.toFixed(1)}%`;
+        }
+
+        // Mock data for charts (replace with real data)
+        const latencyData = [200, 250, 180, 300, 220, 190, 280];
+        const requestsData = [100, 120, 90, 150, 110, 95, 130];
+
+        // Initialize charts
+        const latencyChart = new Chart(document.getElementById('latencyChart'), {
+            type: 'line',
+            data: {
+                labels: ['10m ago', '9m ago', '8m ago', '7m ago', '6m ago', '5m ago', 'Now'],
+                datasets: [{
+                    label: 'Latency (ms)',
+                    data: latencyData,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            }
+        });
+
+        const requestsChart = new Chart(document.getElementById('requestsChart'), {
+            type: 'bar',
+            data: {
+                labels: ['10m ago', '9m ago', '8m ago', '7m ago', '6m ago', '5m ago', 'Now'],
+                datasets: [{
+                    label: 'Requests',
+                    data: requestsData,
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            }
+        });
+
+        // Mock jobs data
+        const mockJobs = [
+            { id: 'job-001', status: 'completed', duration: '45s', created: '2023-10-01 10:30:00' },
+            { id: 'job-002', status: 'processing', duration: '--', created: '2023-10-01 10:32:00' },
+            { id: 'job-003', status: 'completed', duration: '38s', created: '2023-10-01 10:28:00' },
+        ];
+
+        function updateJobsTable() {
+            const tbody = document.getElementById('jobsTable');
+            tbody.innerHTML = mockJobs.map(job => `
+                <tr>
+                    <td class="px-4 py-2">${job.id}</td>
+                    <td class="px-4 py-2">
+                        <span class="px-2 py-1 rounded text-xs ${job.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                            ${job.status}
+                        </span>
+                    </td>
+                    <td class="px-4 py-2">${job.duration}</td>
+                    <td class="px-4 py-2">${job.created}</td>
+                </tr>
+            `).join('');
+        }
+
+        updateJobsTable();
+    </script>
+</body>
+</html>
